@@ -11,7 +11,7 @@ namespace DelMaguey.Consumer
         private readonly ServiceBusProcessor _processor;
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly ILogger<ServiceBusConsumer> _logger;
-        
+
         private readonly string topic = "orders-topic";
 
         private const int MaxRetryAttempsts = 3;
@@ -49,16 +49,15 @@ namespace DelMaguey.Consumer
                 using var scope = _scopeFactory.CreateScope();
                 var dbContext = scope.ServiceProvider.GetRequiredService<FinanceDbContext>();
 
-                await ExecuteWithRetryAsync(async() =>
+                await ExecuteWithRetryAsync(async () =>
                 {
                     var entity = new Transaction
                     {
-                        //TransId = Guid.NewGuid(),
-                        //Type = "Order",
-                        //FromAccount = dto.FromAccount,
-                        //ToAccount = dto.ToAccount,
-                        //Amount = dto.Amount,
-                        //TimeStamp = DateTime.UtcNow
+                        TransId = dto?.TransId ?? 0,
+                        Category = "Order",
+                        State = "Processed",
+                        Amt = dto?.Amt ?? 0,
+                        TransDateTransTime = DateTime.UtcNow
                     };
 
                     dbContext.Transactions.Add(entity);
@@ -68,7 +67,7 @@ namespace DelMaguey.Consumer
                 });
 
 
-                
+
                 await args.CompleteMessageAsync(message);
 
             }
@@ -120,4 +119,5 @@ namespace DelMaguey.Consumer
                 }
             }
         }
+    }
 }
