@@ -49,9 +49,27 @@ namespace DelMaguey.Consumer
                 using var scope = _scopeFactory.CreateScope();
                 var dbContext = scope.ServiceProvider.GetRequiredService<FinanceDbContext>();
 
-               
-                await dbContext.SaveChangesAsync();
+                await ExecuteWithRetryAsync(async() =>
+                {
+                    var entity = new Transaction
+                    {
+                        //TransId = Guid.NewGuid(),
+                        //Type = "Order",
+                        //FromAccount = dto.FromAccount,
+                        //ToAccount = dto.ToAccount,
+                        //Amount = dto.Amount,
+                        //TimeStamp = DateTime.UtcNow
+                    };
 
+                    dbContext.Transactions.Add(entity);
+
+                    await dbContext.SaveChangesAsync();
+
+                });
+
+
+                
+                await args.CompleteMessageAsync(message);
 
             }
             catch (Exception)
@@ -78,5 +96,28 @@ namespace DelMaguey.Consumer
             //    await Task.Delay(1000, stoppingToken);
             //}
         }
-    }
+
+        private async Task ExecuteWithRetryAsync(Func<Task> action)
+        {
+            int retryCount = 0;
+            while (retryCount < MaxRetryAttempsts)
+            {
+                try
+                {
+                    await action();
+                    return; // Success, exit the method
+                }
+                catch (Exception ex)
+                {
+                    retryCount++;
+                    _logger.LogWarning($"Attempt {retryCount} failed: {ex.Message}");
+                    if (retryCount >= MaxRetryAttempsts)
+                    {
+                        _logger.LogError($"All {MaxRetryAttempsts} attempts failed.");
+                        throw; // Rethrow the exception after max attempts
+                    }
+                    await Task.Delay(2000); // Wait before retrying
+                }
+            }
+        }
 }
