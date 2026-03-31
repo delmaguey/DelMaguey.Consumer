@@ -21,6 +21,7 @@ namespace DelMaguey.Consumer
         private const int MaxRetryAttempsts = 1;
 
 
+
         public ServiceBusConsumer(ServiceBusClient client, IServiceScopeFactory scopeFactory, ILogger<ServiceBusConsumer> logger)
         {
             _scopeFactory = scopeFactory;
