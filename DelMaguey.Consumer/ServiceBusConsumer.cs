@@ -11,10 +11,14 @@ namespace DelMaguey.Consumer
         private readonly ServiceBusProcessor _processor;
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly ILogger<ServiceBusConsumer> _logger;
+        
+        ServiceBusReceiver receiver;
 
         private readonly string topic = "orders-topic";
+        private readonly string _queueName = "transactions";
+        private readonly string subscriptionName = "dantest";
 
-        private const int MaxRetryAttempsts = 3;
+        private const int MaxRetryAttempsts = 1;
 
 
         public ServiceBusConsumer(ServiceBusClient client, IServiceScopeFactory scopeFactory, ILogger<ServiceBusConsumer> logger)
@@ -22,15 +26,18 @@ namespace DelMaguey.Consumer
             _scopeFactory = scopeFactory;
             _logger = logger;
 
-            _processor = client.CreateProcessor(topic, new ServiceBusProcessorOptions
+            receiver = client.CreateReceiver(_queueName, subscriptionName);
+
+
+            _processor = client.CreateProcessor(_queueName, subscriptionName, new ServiceBusProcessorOptions
             {
                 AutoCompleteMessages = false,
                 MaxConcurrentCalls = 5,
-                MaxAutoLockRenewalDuration = TimeSpan.FromMinutes(5)
+                MaxAutoLockRenewalDuration = TimeSpan.FromMinutes(5),
             });
 
             _processor.ProcessMessageAsync += ProcessMessageAsync;
-            //_processor.ProcessErrorAsync += ProcessErrorAsync;
+            _processor.ProcessErrorAsync += ProcessErrorAsync;
         }
 
 
@@ -46,17 +53,28 @@ namespace DelMaguey.Consumer
 
                 var dto = JsonSerializer.Deserialize<Transaction>(body);
 
-                using var scope = _scopeFactory.CreateScope();
-                var dbContext = scope.ServiceProvider.GetRequiredService<FinanceDbContext>();
+                
 
                 await ExecuteWithRetryAsync(async () =>
                 {
+                    using var scope = _scopeFactory.CreateScope();
+                    var dbContext = scope.ServiceProvider.GetRequiredService<FinanceDbContext>();
+
                     var entity = new Transaction
                     {
-                        TransId = dto?.TransId ?? 0,
+                        Id = 1296675,
                         Category = "Order",
                         State = "Processed",
+                        City = dto?.City ?? string.Empty,
                         Amt = dto?.Amt ?? 0,
+                        Email = dto?.Email ?? string.Empty,
+                        First = dto?.First ?? string.Empty,
+                        Gender = dto?.Gender ?? string.Empty,
+                        Job = dto?.Job ?? string.Empty,
+                        TransNum = dto?.TransNum ?? string.Empty,
+                        Last = dto?.Last ?? string.Empty,
+                        Merchant = dto?.Merchant ?? string.Empty,
+                        Street = dto?.Street ?? string.Empty,
                         TransDateTransTime = DateTime.UtcNow
                     };
 
@@ -78,6 +96,13 @@ namespace DelMaguey.Consumer
         }
 
 
+
+        private Task ProcessErrorAsync(ProcessErrorEventArgs args)
+        {
+            _logger.LogError(args.Exception, "ServiceBus processing error. Entity: {entity}, Operation: {op}",
+                             args.EntityPath, args.ErrorSource);
+            return Task.CompletedTask;
+        }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {

@@ -24,8 +24,7 @@ public partial class FinanceDbContext : DbContext
     {
         modelBuilder.Entity<Transaction>(entity =>
         {
-            entity.HasNoKey();
-
+            entity.Property(e => e.Id).ValueGeneratedNever();
             entity.Property(e => e.Amt).HasColumnName("amt");
             entity.Property(e => e.Category)
                 .HasMaxLength(50)
@@ -66,7 +65,6 @@ public partial class FinanceDbContext : DbContext
                 .HasMaxLength(50)
                 .HasColumnName("street");
             entity.Property(e => e.TransDateTransTime).HasColumnName("trans_date_trans_time");
-            entity.Property(e => e.TransId).HasColumnName("trans_id");
             entity.Property(e => e.TransNum)
                 .HasMaxLength(100)
                 .HasColumnName("trans_num");
